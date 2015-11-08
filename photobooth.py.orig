@@ -1,0 +1,110 @@
+import RPi.GPIO as GPIO
+import time
+import subprocess
+import datetime
+
+GPIO.setmode(GPIO.BCM)
+
+SWITCH = 21
+RED_LED = 19
+GREEN_LED = 13
+BLUE_LED = 6
+
+GPIO.setup(SWITCH, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(RED_LED, GPIO.OUT)
+GPIO.setup(GREEN_LED, GPIO.OUT)
+GPIO.setup(BLUE_LED, GPIO.OUT)
+
+subprocess.call("gphoto2 --set-config=capturetarget=1", shell=True)
+
+def TakePicture(now_string):
+	GPIO.output(GREEN_LED, False)
+	print("POSE!")
+	for i in range(0):
+		GPIO.output(BLUE_LED, True)
+		time.sleep(0.5)
+		GPIO.output(BLUE_LED, False)
+		time.sleep(0.5)
+	for i in range(5):
+		GPIO.output(BLUE_LED, True)
+		time.sleep(0.1)
+		GPIO.output(BLUE_LED, False)
+		time.sleep(0.1)
+	GPIO.output(BLUE_LED, True)
+	
+	print("SNAP!")
+	try:
+		output = subprocess.check_output("gphoto2 --capture-image-and-download --keep --filename " + str(basedir + "/" + now_string) + ".%C", shell=True)
+		print(output)
+	except ValueError:
+		print "Something done fud up!"
+
+def CreateMontage(now_string):
+	print("Creating montage " + now_string)	
+	command = "montage " + basedir + "/" + now_string + "*.jpg -tile 2x2 -geometry 1920x1280+10+10 " + basedir + "/montages/" + now_string + "_montage.jpg"
+	subprocess.call(command, shell=True)
+	command = "convert " + basedir + "/montages/" + now_string + "_montage.jpg" + " " + basedir + "/wedding_footer.jpg -gravity south -append " + basedir + "/montages/" + now_string + "_print.jpg"
+	subprocess.call(command, shell=True)
+	
+def PrintMontage(now_string):
+	print("Printing montage " + now_string)
+	command = "convert " + basedir + "/montages/" + now_string + "_montage.jpg" + " " + basedir + "/wedding_footer.jpg -gravity south -append " + now_string + "_print.jpg"
+	subprocess.call(command, shell=True)
+
+def Upload():
+	command = "rsync -azP -e ssh /home/pi/photobooth_images/ eric@www.soteria-solutions.com:/var/www/magichardimuth.com/public_html/images/gallery_images/"
+	subprocess.call(command, shell=True)
+
+print("Starting Photobooth")
+
+try:
+	basedir = "/home/pi/photobooth_images"
+
+	while True:
+		GPIO.output(GREEN_LED, True)
+		GPIO.output(RED_LED, False)
+		GPIO.output(BLUE_LED, False)
+	
+		switch_value = GPIO.input(SWITCH)
+	
+		if (switch_value == False):
+			now = datetime.datetime.now()
+			now_string = str(now.strftime("%Y-%m-%d_%H_%M_%S"))			
+		
+			print("Button pushed at " + now_string)
+
+			GPIO.output(GREEN_LED, False)
+			print("POSE!")
+			for i in range(0):
+				GPIO.output(BLUE_LED, True)
+				time.sleep(0.5)
+				GPIO.output(BLUE_LED, False)
+				time.sleep(0.5)
+			for i in range(5):
+				GPIO.output(BLUE_LED, True)
+				time.sleep(0.1)
+				GPIO.output(BLUE_LED, False)
+				time.sleep(0.1)
+			GPIO.output(BLUE_LED, True)
+	
+			print("SNAP!")
+			try:
+				#output = subprocess.call("gphoto2 --capture-image", shell=True)
+				output = subprocess.call("gphoto2 --capture-image-and-download --keep --filename " + str(basedir + "/" + now_string) + ".%C", shell=True)
+				#output = subprocess.check_output("gphoto2 --capture-image-and-download --filename " + str(basedir + "/" + now_string) + ".%C", shell=True)
+				#output = subprocess.check_output("gphoto2 --capture-image", shell=True)
+				print(output)
+			except ValueError:
+				print "Rut Roh!"
+
+			#TakePicture(now_string)
+		
+			#CreateMontage(now_string)
+
+			#PrintMontage(now_string)
+
+			print("Finished processing")
+			GPIO.output(BLUE_LED, False)
+
+except KeyboardInterrupt:
+	GPIO.cleanup()
