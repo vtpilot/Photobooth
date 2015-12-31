@@ -2,8 +2,10 @@
 
 import RPi.GPIO as GPIO
 import time
-import subprocess
+#import subprocess
 import datetime
+from cammodules import TakePicture
+from cammodules import ConfigureCamera
 
 SWITCH = 21
 RED_LED = 19
@@ -17,13 +19,20 @@ GPIO.setup(GREEN_LED, GPIO.OUT)
 GPIO.setup(BLUE_LED, GPIO.OUT)
 
 now = datetime.datetime.now().strftime('%Y-%m-%d')
-OutputDir = "/home/pi/Photos/Photobooth/" + now + "/"
+OutputDir = "/home/pi/Pictures/" + now + "/"
+
+### Configure Camera
+options=[ \
+	"autopoweroff=0", \
+	"capturetarget=1", \
+	"focusmode=0", \
+	"imageformat=6" \
+	]
+
+for option in options:
+	ConfigureCamera(option) 
 
 try:
-	### Configure Camera
-	# CaptureTarget=1 / Save to CF Card
-	subprocess.call("gphoto2 --set-config capturetarget=1 --set-config imageformat=6", shell=True)
-
 	print("Starting Photobooth")
 	
 	while True:
@@ -41,25 +50,24 @@ try:
 			GPIO.output(GREEN_LED, False)
 	
 			print("POSE!")
-			for i in range(0):
-				GPIO.output(BLUE_LED, True)
-				time.sleep(0.5)
-				GPIO.output(BLUE_LED, False)
-				time.sleep(0.5)
-			for i in range(5):
+			
+			for i in range(3):
 				GPIO.output(BLUE_LED, True)
 				time.sleep(0.1)
 				GPIO.output(BLUE_LED, False)
 				time.sleep(0.1)
 			GPIO.output(BLUE_LED, True)
 	
-			print("SNAP!")
+			#print("SNAP!")
 
-			try:
-				output = subprocess.call("gphoto2 --capture-image-and-download --keep --filename  " + OutputDir + now.strftime("%H_%M_%S") + ".%C", shell=True)
-				print(output)
-			except ValueError:
-				print "Something done fud up!"
+			TakePicture(OutputDir)
+
+			#try:
+				
+				#output = subprocess.call("gphoto2 --capture-image-and-download --keep --filename " + OutputDir + "%f.%C", shell=True)
+				#print(output)
+			#except ValueError:
+			#	print "Something done fud up!"
 
 
 			print("Finished processing")
